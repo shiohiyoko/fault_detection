@@ -1,13 +1,13 @@
-/****************************************************************************/	
-//	Function: Measure the measure the Surrounding temperature around the sensor
-//			  and the temperature of the target which is in front of the sensor.
-//			  And print the result on the serial monitor.
-//	Hardware: Grove - Infrared Temperature Sensor
-//	Arduino IDE: Arduino-1.0
-//	Author:	 Bruce.Qin	
-//	Date: 	 Nov 28,2011
-//	Version: v1.0 modified by FrankieChu at Jan 24,2013
-//	by www.seeedstudio.com
+/****************************************************************************/  
+//  Function: Measure the measure the Surrounding temperature around the sensor
+//        and the temperature of the target which is in front of the sensor.
+//        And print the result on the serial monitor.
+//  Hardware: Grove - Infrared Temperature Sensor
+//  Arduino IDE: Arduino-1.0
+//  Author:  Bruce.Qin  
+//  Date:    Nov 28,2011
+//  Version: v1.0 modified by FrankieChu at Jan 24,2013
+//  by www.seeedstudio.com
 //
 //  This library is free software; you can redistribute it and/or
 //  modify it under the terms of the GNU Lesser General Public
@@ -26,8 +26,6 @@
 /******************************************************************************/
 
 #include <math.h>
-#include <XBee.h>
-
 
 #define SUR_TEMP_PIN A0 // Analog input pin connect to temperature sensor SUR pin
 #define OBJ_TEMP_PIN A1 // Analog input pin connect to temperature sensor OBJ pin
@@ -50,18 +48,7 @@ const float reference_vol=0.500;
 unsigned char clear_num=0;//when use lcd to display
 float R=0;
 float voltage=0;
-float final_temp=0;
 
-// xbee parameters
-XBee xbee = XBee();
-
-
-// current parameters
-const float FACTOR = 30;
-const float VMIN = 0.96;
-const float VMAX = 3.92;
-
-const float ADCV = 5.0;
 
 long res[100]={
                  318300,302903,288329,274533,261471,249100,237381,226276,215750,205768,
@@ -93,150 +80,103 @@ float obj [13][12]={
 
 void setup() 
 {
-	Serial.begin(115200); // initialize serial communications at 9600 bps
-	analogReference(INTERNAL);//set the refenrence voltage 1.1V,the distinguishability can up to 1mV.
-	//analogReference(INTERNAL1V1);//(mega only)set the refenrence voltage 1.1V,the distinguishability can up to 1mV.
-  xbee.setSerial(Serial);
+  Serial.begin(9600); // initialize serial communications at 9600 bps
+  analogReference(INTERNAL);//set the refenrence voltage 1.1V,the distinguishability can up to 1mV.
+  //analogReference(INTERNAL1V1);//(mega only)set the refenrence voltage 1.1V,the distinguishability can up to 1mV.
 }
-
 void loop()
 {
-//	measureSurTemp();//measure the /Surrounding temperature around the sensor
-	final_temp = measureObjectTemp();
-  sendMsg();
+  measureSurTemp();//measure the Surrounding temperature around the sensor
+  measureObjectTemp();
 }
 
 float binSearch(long x)// this function used for measure the surrounding temperature
 {
-	int low,mid,high;
-	low=0;
-	//mid=0;
-	high=100;
-	while (low<=high)
-	{
-		mid=(low+high)/2;
-		if(x<res[mid])
-			low= mid+1;
-		else//(x>res[mid])
-			high=mid-1;
-	}
-	return mid;
+  int low,mid,high;
+  low=0;
+  //mid=0;
+  high=100;
+  while (low<=high)
+  {
+    mid=(low+high)/2;
+    if(x<res[mid])
+      low= mid+1;
+    else//(x>res[mid])
+      high=mid-1;
+  }
+  return mid;
 }
 
 float arraysearch(float x,float y)//x is the surrounding temperature,y is the object temperature
 {
-	int i=0;
-	float tem_coefficient=100;//Magnification of 100 times	
-	i=(x/10)+1;//Ambient temperature			
-	voltage=(float)y/tem_coefficient;//the original voltage		
-	//Serial.print("sensor voltage:\t");		
-	//Serial.print(voltage,5);	
-	//Serial.print("V");			
-	for(temp3=0;temp3<13;temp3++)		
-	{			
-		if((voltage>obj[temp3][i])&&(voltage<obj[temp3+1][i]))				
-		{			
-			return temp3;					
-		}			
-	}
+  int i=0;
+  float tem_coefficient=100;//Magnification of 100 times  
+  i=(x/10)+1;//Ambient temperature      
+  voltage=(float)y/tem_coefficient;//the original voltage   
+  //Serial.print("sensor voltage:\t");    
+  //Serial.print(voltage,5);  
+  //Serial.print("V");      
+  for(temp3=0;temp3<13;temp3++)   
+  {     
+    if((voltage>obj[temp3][i])&&(voltage<obj[temp3+1][i]))        
+    {     
+      return temp3;         
+    }     
+  }
 }
 float measureSurTemp()
 {  
-	unsigned char i=0;
-	float current_temp1=0;	  
-	int signal=0;	  
-	tempValue=0;
+  unsigned char i=0;
+  float current_temp1=0;    
+  int signal=0;   
+  tempValue=0;
 
-	for(i=0;i<10;i++)       //	  
-	{		  
-		tempValue+= analogRead(SUR_TEMP_PIN); 		  
-		delay(10); 	  
-	}	  
-	tempValue=tempValue/10;	  
-	temp = tempValue*1.1/1023;	  
-	R=2000000*temp/(2.50-temp);	  
-	signal=binSearch(R);	  
-	current_temp=signal-1+temp_calibration+(res[signal-1]-R)/(res[signal-1]-res[signal]);
-	Serial.print("Surrounding temperature:");
-	Serial.print(current_temp);
-	return current_temp;
+  for(i=0;i<10;i++)       //    
+  {     
+    tempValue+= analogRead(SUR_TEMP_PIN);       
+    delay(10);    
+  }   
+  tempValue=tempValue/10;   
+  temp = tempValue*1.1/1023;    
+  R=2000000*temp/(2.50-temp);   
+  signal=binSearch(R);    
+  current_temp=signal-1+temp_calibration+(res[signal-1]-R)/(res[signal-1]-res[signal]);
+  Serial.print("Surrounding temperature:");
+  Serial.print(current_temp);
+  return current_temp;
 }
 
 float measureObjectTemp()
 {
-	unsigned char i=0;  
-	unsigned char j=0;  
-	float sur_temp=0;  
-	unsigned int array_temp=0;  
-	float temp1,temp2; 
-	objtValue=0;	
-	for(i=0;i<10;i++)
-	{
-		objtValue+= analogRead(OBJ_TEMP_PIN); 
-		delay(10); 
-    }
-	objtValue=objtValue/10;//Averaging processing     
-	temp1=objtValue*1.1/1023;//+objt_calibration; 
-	sur_temp=temp1-(reference_vol+offset_vol);             
-//	Serial.print("\t");/
-	array_temp=arraysearch(current_temp,sur_temp*1000);        
-	temp2=current_temp;        
-	temp1=(temperature_range*voltage)/(obj[array_temp+1][(int)(temp2/10)+1]-obj[array_temp][(int)(temp2/10)+1]);        
-	return temp2+temp1;
-}
-
-int vibration(){
-  return analogRead(A2);
-}
-
-float getCorrients()
-{
-  float volt;
-  float corrients;
-  float sum = 0;
-  long tempo = millis();
-  int counter = 0;
-
-  while(millis() - tempo < 500)
+  unsigned char i=0;  
+  unsigned char j=0;  
+  float sur_temp=0;  
+  unsigned int array_temp=0;  
+  float temp1,temp2; 
+  float final_temp=0;
+  objtValue=0;  
+  for(i=0;i<10;i++)
   {
-    volt = analogRead(A4) * ADCV / 1023.0;
-    corrients = fmap(volt, VMIN, VMAX, -FACTOR, FACTOR);
-
-    sum += sq(corrients);
-    counter = counter + 1;
-    delay(1);
-  }
-
-  corrients = sqrt(sum/counter);
-  return(corrients);
-}
-
-float fmap(float x, float in_min, float in_max, float out_min, float out_max)
-{
-  return (x - in_min) * (out_max-out_min) / (in_max - in_min) + out_min;
-}
-
-
-void sendMsg(){
-  int temp = static_cast<int>(final_temp*100);
-  int vib = vibration();
-  int current = static_cast<int>(getCorrients());
-  
-  uint8_t payload[6]; 
-//  Serial.println(temp);
-  payload[0] = temp >> 8 & 0xFF;
-  payload[1] = temp & 0xFF;
-  payload[2] = vib >> 8 & 0xFF;
-  payload[3] = vib & 0xFF;
-  payload[4] = current >> 8 & 0xFF;
-  payload[5] = current & 0xFF;
-  
-    // Specify the address of the remote XBee (this is the SH + SL)
-  XBeeAddress64 addr64 = XBeeAddress64(0x0013a200, 0x41268089);
-  
-  // Create a TX Request
-  ZBTxRequest zbTx = ZBTxRequest(addr64, payload, sizeof(payload));
-  
-  // Send your request
-  xbee.send(zbTx);
+    objtValue+= analogRead(OBJ_TEMP_PIN); 
+    delay(10); 
+    }       
+  objtValue=objtValue/10;//Averaging processing     
+  temp1=objtValue*1.1/1023;//+objt_calibration; 
+  sur_temp=temp1-(reference_vol+offset_vol);             
+  Serial.print("\t Sensor voltage:");   
+  Serial.print(sur_temp,3); 
+  Serial.print("V");  
+  array_temp=arraysearch(current_temp,sur_temp*1000);        
+  temp2=current_temp;        
+  temp1=(temperature_range*voltage)/(obj[array_temp+1][(int)(temp2/10)+1]-obj[array_temp][(int)(temp2/10)+1]);        
+  final_temp=temp2+temp1;        
+  if((final_temp>100)||(final_temp<=-10))
+    {
+    Serial.println ("\t out of range!");
+    }
+  else
+    {
+      Serial.print("\t object temperature:");   
+      Serial.println(final_temp,2); 
+      }
 }

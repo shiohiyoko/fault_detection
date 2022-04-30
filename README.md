@@ -5,6 +5,12 @@
 $ sudo pip install pandas digi-xbee gspread oauth2client 
 ```
 
+## 実行
+```
+$ cd mesh_server
+$ python3 server.py
+```
+
 ## 調整可能なパラメータ
 ```python:server.py
 [...]

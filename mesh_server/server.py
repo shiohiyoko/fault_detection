@@ -1,24 +1,29 @@
 from distutils.log import error
-from logging import exception
-from os import remove
 import os
 from threading import local
 from digi.xbee.devices import XBeeDevice
-from digi.xbee.models.address import XBee64BitAddress as x64
 
-from matplotlib import pyplot as plt
-from matplotlib import animation
-import numpy as np
 import pandas as pd
-import numpy
 import csv
-import pprint
 import time
 import sys
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-import gspread_dataframe as gd
 import queue
+
+# ------------------  settings -------------------
+
+# save data on local
+local_save = True
+local_csv_path = 'data/'
+
+# Path for Google Docs oauth file
+GDOCS_OAUTH_JSON       = 'dht22_spread/propane-net-346716-96d30a3aef97.json'
+
+# Google Docs spreadsheet name.
+GDOCS_SPREADSHEET_NAME = 'database'
+
+# -------------------------------------------------
 
 class SpreadSheet():
     def __init__(self, oauth_json, spreadsheet_name):
@@ -61,10 +66,10 @@ class SpreadSheet():
             self.workbook = None
             time.sleep(10)
 
-    def append_local(self, data, title = "Sheet1"):
+    def append_local(self, data, title = "Sheet1", path = 'data/'):
         try:
             if not os.path.exists('data/'+title):
-                with open('data/'+title, 'w') as f:
+                with open(path+title, 'w') as f:
                     writer = csv.writer(f)
                     writer.writerow(["time", "temperature", "vibrant", "current"])
 
@@ -144,11 +149,6 @@ class GetData(object):
         for data in self.raw_data.values():
             data.clear()
 
-# Path for Google Docs oauth file
-GDOCS_OAUTH_JSON       = 'dht22_spread/propane-net-346716-96d30a3aef97.json'
-
-# Google Docs spreadsheet name.
-GDOCS_SPREADSHEET_NAME = 'database'
 
 data = GetData()
 sp = SpreadSheet(GDOCS_OAUTH_JSON,GDOCS_SPREADSHEET_NAME)
@@ -181,15 +181,22 @@ sp = SpreadSheet(GDOCS_OAUTH_JSON,GDOCS_SPREADSHEET_NAME)
 #             writer.writerow(raw_data)
 
 # data.ser_close()
-to_string = x64
-while True:
 
+if local_save:
+    print("set to local save")
+else:
+    print("set to Spreadsheet save")
+
+while True:
+    
     if data.raw_data is not None:
         
         tmp = data.raw_data.get()
         id = tmp.pop(1)
-        sp.append_local(tmp,title=str(id))
-
+        if local_save:
+            sp.append_local(tmp,title=str(id), path=local_csv_path)
+        else:
+            sp.append(tmp,title=str(id))
     # data.clearData()
     # time.sleep(1)
 

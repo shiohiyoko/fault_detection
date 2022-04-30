@@ -26,13 +26,14 @@ GDOCS_SPREADSHEET_NAME = 'database'
 # -------------------------------------------------
 
 class SpreadSheet():
-    def __init__(self, oauth_json, spreadsheet_name):
-        self.GDOCS_OAUTH_JSON       = oauth_json
+    def __init__(self, oauth_json, spreadsheet_name, local_save):
+        if not local_save:
+            self.GDOCS_OAUTH_JSON       = oauth_json
 
-        # Google Docs spreadsheet name.
-        self.GDOCS_SPREADSHEET_NAME = spreadsheet_name
+            # Google Docs spreadsheet name.
+            self.GDOCS_SPREADSHEET_NAME = spreadsheet_name
 
-        self.workbook = self.login_open_sheet(self.GDOCS_OAUTH_JSON, self.GDOCS_SPREADSHEET_NAME)
+            self.workbook = self.login_open_sheet(self.GDOCS_OAUTH_JSON, self.GDOCS_SPREADSHEET_NAME)
     
     def login_open_sheet(self, oauth_key_file, spreadsheet):
         """Connect to Google Docs spreadsheet and return the first worksheet."""
@@ -68,12 +69,12 @@ class SpreadSheet():
 
     def append_local(self, data, title = "Sheet1", path = 'data/'):
         try:
-            if not os.path.exists('data/'+title):
+            if not os.path.exists(path+title):
                 with open(path+title, 'w') as f:
                     writer = csv.writer(f)
                     writer.writerow(["time", "temperature", "vibrant", "current"])
 
-            with open('data/'+title, 'a') as f:
+            with open(path+title, 'a') as f:
                 writer = csv.writer(f)
                 writer.writerow(data)
         except Exception as e:

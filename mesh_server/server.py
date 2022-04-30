@@ -1,19 +1,29 @@
 from distutils.log import error
+import os
+from threading import local
 from digi.xbee.devices import XBeeDevice
 
-from matplotlib import pyplot as plt
-from matplotlib import animation
-import numpy as np
 import pandas as pd
-import numpy
 import csv
-import pprint
 import time
 import sys
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-import gspread_dataframe as gd
+import queue
 
+# ------------------  settings -------------------
+
+# save data on local
+local_save = True
+local_csv_path = 'data/'
+
+# Path for Google Docs oauth file
+GDOCS_OAUTH_JSON       = 'dht22_spread/propane-net-346716-96d30a3aef97.json'
+
+# Google Docs spreadsheet name.
+GDOCS_SPREADSHEET_NAME = 'database'
+
+# -------------------------------------------------
 
 class SpreadSheet():
     def __init__(self, oauth_json, spreadsheet_name):
@@ -43,18 +53,31 @@ class SpreadSheet():
         try:
             # create worksheet if doesn't exist
             if self.find(title) is False:
-                self.workbook.add_worksheet(title=title, rows=100, cols=4)
+                self.workbook.add_worksheet(title=title, rows=10000, cols=4)
+                worksheet = self.workbook.worksheet(title)
+                worksheet.append_row(["time", "temperature", "vibrant", "current"])
             
             # open worksheet and append data
             worksheet = self.workbook.worksheet(title)
-            # worksheet.append_row(data)
-            gd.set_with_dataframe(worksheet, data)
-
+            worksheet.append_row(data)
         except Exception as e:
             print('Append error, log in again')
             error(e)
             self.workbook = None
             time.sleep(10)
+
+    def append_local(self, data, title = "Sheet1", path = 'data/'):
+        try:
+            if not os.path.exists('data/'+title):
+                with open(path+title, 'w') as f:
+                    writer = csv.writer(f)
+                    writer.writerow(["time", "temperature", "vibrant", "current"])
+
+            with open('data/'+title, 'a') as f:
+                writer = csv.writer(f)
+                writer.writerow(data)
+        except Exception as e:
+            error(e)
 
     # find title from worksheets
     def find(self, title):
@@ -63,7 +86,7 @@ class SpreadSheet():
                 return True
         
         return False
-        
+
 
 class GetData(object):
     def __init__(self):
@@ -71,11 +94,13 @@ class GetData(object):
         self.baudrate = 115200
         print("Open Port")
         self.device = XBeeDevice(self.port, self.baudrate)
-        self.raw_data = {'time':[], 
-                         'id':[], 
-                         'temperature':[],
-                         'vibration':[],
-                         'current':[]}
+        # self.raw_data = {'time':[], 
+        #                  'id':[], 
+        #                  'temperature':[],
+        #                  'vibration':[],
+        #                  'current':[]}
+
+        self.raw_data = queue.Queue()
 
         try:
             self.device.open()
@@ -90,12 +115,13 @@ class GetData(object):
         temp = xbee_message.data
         # print(xbee_message.remote_device.get_64bit_addr())
         print("data received!")
-        self.raw_data['time'].append(int(time.time()))
-        self.raw_data['id'].append(xbee_message.remote_device.get_64bit_addr())
-        self.raw_data['temperature'].append(int.from_bytes(temp[0:2], byteorder='big', signed=True) * 0.01)
-        self.raw_data['vibration'].append(int.from_bytes(temp[2:4], byteorder='big', signed=True))   
-        self.raw_data['current'].append(int.from_bytes(temp[4:6], byteorder='big', signed=True))
-        
+        data  = []
+        data.append(int(time.time()))
+        data.append(xbee_message.remote_device.get_64bit_addr())
+        data.append(int.from_bytes(temp[0:2], byteorder='big', signed=True) * 0.01)
+        data.append(int.from_bytes(temp[2:4], byteorder='big', signed=True))   
+        data.append(int.from_bytes(temp[4:6], byteorder='big', signed=True))
+        self.raw_data.put(data)
         # df = pd.DataFrame(data=value, columns=['id', 'vibration', 'temperature'])
         # return value
         # print(self.raw_data[:][-1])
@@ -123,11 +149,6 @@ class GetData(object):
         for data in self.raw_data.values():
             data.clear()
 
-
-GDOCS_OAUTH_JSON       = '/home/shiohiyoko/MemoRi/fault_detection/dht22_spread/propane-net-346716-96d30a3aef97.json'
-
-# Google Docs spreadsheet name.
-GDOCS_SPREADSHEET_NAME = 'database'
 
 data = GetData()
 sp = SpreadSheet(GDOCS_OAUTH_JSON,GDOCS_SPREADSHEET_NAME)
@@ -160,12 +181,24 @@ sp = SpreadSheet(GDOCS_OAUTH_JSON,GDOCS_SPREADSHEET_NAME)
 #             writer.writerow(raw_data)
 
 # data.ser_close()
-while True:
 
-    df = pd.DataFrame(data.raw_data)
-    sp.append(df)
-    data.clearData()
-    time.sleep(1)
+if local_save:
+    print("set to local save")
+else:
+    print("set to Spreadsheet save")
+
+while True:
+    
+    if data.raw_data is not None:
+        
+        tmp = data.raw_data.get()
+        id = tmp.pop(1)
+        if local_save:
+            sp.append_local(tmp,title=str(id), path=local_csv_path)
+        else:
+            sp.append(tmp,title=str(id))
+    # data.clearData()
+    # time.sleep(1)
 
 # input()
 # data.saveData()

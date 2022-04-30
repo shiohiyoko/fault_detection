@@ -1,5 +1,10 @@
 from distutils.log import error
+from logging import exception
+from os import remove
+import os
+from threading import local
 from digi.xbee.devices import XBeeDevice
+from digi.xbee.models.address import XBee64BitAddress as x64
 
 from matplotlib import pyplot as plt
 from matplotlib import animation
@@ -45,7 +50,7 @@ class SpreadSheet():
             if self.find(title) is False:
                 self.workbook.add_worksheet(title=title, rows=10000, cols=4)
                 worksheet = self.workbook.worksheet(title)
-                worksheet.append_row(["time", "id", "temperature", "vibrant", "current"])
+                worksheet.append_row(["time", "temperature", "vibrant", "current"])
             
             # open worksheet and append data
             worksheet = self.workbook.worksheet(title)
@@ -56,6 +61,19 @@ class SpreadSheet():
             self.workbook = None
             time.sleep(10)
 
+    def append_local(self, data, title = "Sheet1"):
+        try:
+            if not os.path.exists('data/'+title):
+                with open('data/'+title, 'w') as f:
+                    writer = csv.writer(f)
+                    writer.writerow(["time", "temperature", "vibrant", "current"])
+
+            with open('data/'+title, 'a') as f:
+                writer = csv.writer(f)
+                writer.writerow(data)
+        except Exception as e:
+            error(e)
+
     # find title from worksheets
     def find(self, title):
         for tmp in self.workbook.worksheets():
@@ -63,7 +81,7 @@ class SpreadSheet():
                 return True
         
         return False
-        
+
 
 class GetData(object):
     def __init__(self):
@@ -126,8 +144,8 @@ class GetData(object):
         for data in self.raw_data.values():
             data.clear()
 
-
-GDOCS_OAUTH_JSON       = '/home/shiohiyoko/MemoRi/fault_detection/dht22_spread/propane-net-346716-96d30a3aef97.json'
+# Path for Google Docs oauth file
+GDOCS_OAUTH_JSON       = 'dht22_spread/propane-net-346716-96d30a3aef97.json'
 
 # Google Docs spreadsheet name.
 GDOCS_SPREADSHEET_NAME = 'database'
@@ -163,15 +181,17 @@ sp = SpreadSheet(GDOCS_OAUTH_JSON,GDOCS_SPREADSHEET_NAME)
 #             writer.writerow(raw_data)
 
 # data.ser_close()
+to_string = x64
 while True:
 
     if data.raw_data is not None:
+        
         tmp = data.raw_data.get()
-        print(tmp)
-        sp.append(tmp,title=tmp[1])
+        id = tmp.pop(1)
+        sp.append_local(tmp,title=str(id))
 
     # data.clearData()
-    time.sleep(1)
+    # time.sleep(1)
 
 # input()
 # data.saveData()

@@ -69,6 +69,11 @@ class SpreadSheet():
 
     def append_local(self, data, title = "Sheet1", path = 'data/'):
         try:
+            if 90 <= data[1]:
+                data[1] = 0
+            if 75 <= data[2] and 85 <= data[2]:
+                data[2] = 0
+                 
             if not os.path.exists(path+title):
                 with open(path+title, 'w') as f:
                     writer = csv.writer(f)
